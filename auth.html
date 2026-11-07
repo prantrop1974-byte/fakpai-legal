@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ฝากไป · บัญชีผู้ใช้</title>
+<style>
+:root{--bg:#f3f6f5;--card:#fff;--fg:#17211e;--muted:#5d6b66;--line:#d5dfdb;--brand:#0f7a5f;--red:#c0392b;--ok:#0f7a5f}
+@media (prefers-color-scheme:dark){:root{--bg:#111816;--card:#18211e;--fg:#e4ece9;--muted:#93a39d;--line:#2a3833;--brand:#2fb38c;--red:#ff7a6b;--ok:#2fb38c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Noto Sans Thai",sans-serif}
+main{max-width:440px;margin:0 auto;padding:32px 16px}
+.logo{width:72px;height:72px;border-radius:22px;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 10px}
+h1{text-align:center;font-size:26px;margin:0 0 4px;color:var(--brand)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-top:20px}
+h2{font-size:19px;margin:0 0 8px}
+p{margin:6px 0;color:var(--muted)}
+label{display:block;font-weight:700;margin:14px 0 6px}
+input{width:100%;font:inherit;padding:14px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--fg)}
+input:focus{outline:2px solid var(--brand);outline-offset:1px}
+button{width:100%;font:inherit;font-weight:800;font-size:18px;background:var(--brand);color:#fff;border:0;border-radius:14px;padding:16px;margin-top:18px;cursor:pointer}
+button:disabled{opacity:.6}
+.err{color:var(--red);font-weight:700;min-height:1.4em;margin-top:10px}
+.ok{color:var(--ok);font-weight:800;font-size:18px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo" aria-hidden="true">📦</div>
+  <h1>ฝากไป</h1>
+
+  <section class="card" id="loading"><p>กำลังตรวจสอบลิงก์…</p></section>
+
+  <section class="card hide" id="reset">
+    <h2>🔑 ตั้งรหัสผ่านใหม่</h2>
+    <p id="who"></p>
+    <form id="f" novalidate>
+      <label for="p1">รหัสผ่านใหม่</label>
+      <input id="p1" type="password" autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร" required>
+      <label for="p2">พิมพ์รหัสผ่านใหม่อีกครั้ง</label>
+      <input id="p2" type="password" autocomplete="new-password" required>
+      <div class="err" id="err" role="alert"></div>
+      <button id="btn" type="submit">บันทึกรหัสผ่านใหม่</button>
+    </form>
+  </section>
+
+  <section class="card hide" id="done">
+    <p class="ok" id="doneT">✅ ตั้งรหัสผ่านใหม่เรียบร้อย</p>
+    <p id="doneD">กลับไปที่แอป <b>ฝากไป</b> แล้วเข้าสู่ระบบด้วยอีเมลและรหัสผ่านใหม่ได้เลย</p>
+  </section>
+
+  <section class="card hide" id="bad">
+    <h2>ลิงก์นี้ใช้ไม่ได้แล้ว</h2>
+    <p id="badD">ลิงก์หมดอายุหรือถูกใช้ไปแล้ว — เปิดแอปฝากไป › เข้าสู่ระบบ › <b>ลืมรหัสผ่าน?</b> เพื่อขอลิงก์ใหม่ (ใช้ลิงก์ในอีเมลล่าสุดเท่านั้น)</p>
+  </section>
+</main>
+<script>
+// หน้านี้รับลิงก์จากอีเมลของ Supabase (ลืมรหัสผ่าน / ยืนยันอีเมล) — ใช้ publishable key ซึ่งเปิดเผยได้
+const SUPA = 'https://mrjymspaqximcjqktabh.supabase.co';
+const KEY = 'sb_publishable_omQYeXBF9HkJ6b3q6i3ltQ_gp010bvC';
+const $ = (id) => document.getElementById(id);
+const show = (id) => { for (const s of ['loading', 'reset', 'done', 'bad']) $(s).classList.toggle('hide', s !== id); };
+
+const h = new URLSearchParams(location.hash.slice(1));
+const q = new URLSearchParams(location.search);
+const token = h.get('access_token');
+const type = h.get('type') || q.get('type');
+history.replaceState(null, '', location.pathname);   // ไม่ให้ token ค้างในแถบที่อยู่/ประวัติ
+
+if (h.get('error') || q.get('error')) {
+  show('bad');
+} else if (token && type === 'recovery') {
+  try {
+    const email = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).email;
+    if (email) $('who').textContent = 'บัญชี ' + email;
+  } catch (e) { /* แสดงไม่ได้ก็ไม่เป็นไร */ }
+  show('reset');
+} else if (token || type === 'signup') {
+  $('doneT').textContent = '✅ ยืนยันอีเมลเรียบร้อย';
+  $('doneD').innerHTML = 'กลับไปที่แอป <b>ฝากไป</b> แล้วเข้าสู่ระบบด้วยอีเมลและรหัสผ่านที่สมัครไว้ได้เลย';
+  show('done');
+} else {
+  $('badD').innerHTML = 'หน้านี้ใช้เปิดจากลิงก์ในอีเมลเท่านั้น — ถ้าลืมรหัสผ่าน เปิดแอปฝากไป › เข้าสู่ระบบ › <b>ลืมรหัสผ่าน?</b>';
+  show('bad');
+}
+
+$('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const p1 = $('p1').value, p2 = $('p2').value, err = $('err');
+  if (p1.length < 6) { err.textContent = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'; return; }
+  if (p1 !== p2) { err.textContent = 'รหัสผ่านสองช่องไม่ตรงกัน'; return; }
+  err.textContent = ''; $('btn').disabled = true; $('btn').textContent = 'กำลังบันทึก…';
+  try {
+    const r = await fetch(SUPA + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { apikey: KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: p1 }),
+    });
+    if (r.ok) { show('done'); return; }
+    const j = await r.json().catch(() => ({}));
+    const m = String(j.msg || j.message || j.error_description || '');
+    err.textContent = /different from the old/i.test(m) ? 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม'
+      : /expired|invalid|jwt/i.test(m) || r.status === 401 || r.status === 403 ? 'ลิงก์หมดอายุแล้ว — ขอลิงก์ใหม่จากแอป'
+      : /should be|weak|characters/i.test(m) ? 'รหัสผ่านง่ายเกินไป — ลองใช้ตัวอักษรผสมตัวเลข'
+      : 'บันทึกไม่สำเร็จ (' + (m || r.status) + ')';
+  } catch (x) {
+    err.textContent = 'เชื่อมต่ออินเทอร์เน็ตไม่ได้ ลองใหม่อีกครั้ง';
+  }
+  $('btn').disabled = false; $('btn').textContent = 'บันทึกรหัสผ่านใหม่';
+});
+</script>
+</body>
+</html>
